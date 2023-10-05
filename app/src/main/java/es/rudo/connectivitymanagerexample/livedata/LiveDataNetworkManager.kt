@@ -5,12 +5,16 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.util.Log
 import androidx.lifecycle.LiveData
 
-class LiveDataNetworkManager(context: Context) : LiveData<Boolean>() {
+/**
+ *
+ */
+class LiveDataNetworkManager(context: Context) : LiveDataNetworkManagerInterface, LiveData<Boolean>() {
     private var connectivityManager = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+    override val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             super.onAvailable(network)
             postValue(true)
@@ -29,27 +33,15 @@ class LiveDataNetworkManager(context: Context) : LiveData<Boolean>() {
 
     override fun onActive() {
         super.onActive()
-        checkNetworkConnectivity()
+        Log.d("LiveDataNetworkManager", "onActive: ")
+        if (connectivityManager.activeNetwork == null) postValue(false)
+        connectivityManager.registerNetworkCallback(super.networkRequest(), networkCallback)
     }
 
     override fun onInactive() {
         super.onInactive()
+        Log.d("LiveDataNetworkManager", "onInactive: ")
         connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 
-    private fun checkNetworkConnectivity() {
-
-        val network = connectivityManager.activeNetwork
-        if (network == null) postValue(false)
-
-        val requestBuilder = NetworkRequest.Builder().apply {
-            addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-            addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
-        }.build()
-
-        connectivityManager.registerNetworkCallback(requestBuilder, networkCallback)
-    }
 }
